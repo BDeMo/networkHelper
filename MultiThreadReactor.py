@@ -8,21 +8,7 @@ import sys
 import time
 
 import networkHelper.NetworkStatus as status
-
-def get_host_ip():
-    try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 80))
-        ip = s.getsockname()[0]
-    finally:
-        s.close()
-    return ip
-
-def do(scs, addr):
-    try:
-        pass
-    finally:
-        scs.close()
+import networkHelper.tricks as tricks
 
 class sThreadPool():
     def __init__(self, port, size):
@@ -42,15 +28,20 @@ class sThreadPool():
             self.scs = scs
             self.addr = addr
             self.counter = 0
-            self.sServer
+
+        def __del__(self):
+            if self.id in self.pool.workers:
+                del self.pool.workers[self.id]
+            self.scs.close()
 
         def run(self):
             self.pool.do(self.scs)
+            self.__del__()
 
     def start(self):
         try:
             self.sServer = socket.socket()
-            self.sServer.bind((get_host_ip(), self.port))
+            self.sServer.bind((tricks.get_host_ip(), self.port))
             self.sServer.listen(self.size)
             while True:
                 scs, addr= self.sServer.accept()
@@ -81,18 +72,21 @@ class myThreadPool(sThreadPool):
     def do(self, socket):
         try:
             socket.send(bytes('connected :'+time.ctime(time.time()), encoding='utf-8'))
+            print(self.workers)
         finally:
             socket.close()
-            
+
 #implement __main__
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        pass;
-    else:
-        print('arg1: port, arg2: size.')
-        exit(1)
-    port = int(sys.argv[1])
-    size = int(sys.argv[2])
+    # if len(sys.argv) > 1:
+    #     pass;
+    # else:
+    #     print('arg1: port, arg2: size.')
+    #     exit(1)
+    # port = int(sys.argv[1])
+    # size = int(sys.argv[2])
+    port = 55667
+    size = 10
     tp = myThreadPool(port, size)
     tp.start()
     # try:
