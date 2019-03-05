@@ -4,11 +4,10 @@
 
 import socket
 import threading
-import sys
 import time
 
 import networkHelper.NetworkStatus as status
-import networkHelper.tricks as tricks
+import networkHelper.systemInfo as sysinfo
 
 class sThreadPool():
     def __init__(self, port, size):
@@ -41,7 +40,7 @@ class sThreadPool():
     def start(self):
         try:
             self.sServer = socket.socket()
-            self.sServer.bind((tricks.get_host_ip(), self.port))
+            self.sServer.bind((sysinfo.host_ipv4(), self.port))
             self.sServer.listen(self.size)
             while True:
                 scs, addr= self.sServer.accept()
@@ -78,15 +77,13 @@ class myThreadPool(sThreadPool):
 
 #implement __main__
 if __name__ == '__main__':
-    # if len(sys.argv) > 1:
-    #     pass;
-    # else:
-    #     print('arg1: port, arg2: size.')
-    #     exit(1)
-    # port = int(sys.argv[1])
-    # size = int(sys.argv[2])
     port = 55667
     size = 10
+    sysinfo.getOption();
+    if sysinfo.port != None:
+        port = sysinfo.port
+    if sysinfo.size != None:
+        size = sysinfo.size
     tp = myThreadPool(port, size)
     tp.start()
     # try:
