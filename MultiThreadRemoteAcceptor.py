@@ -6,14 +6,16 @@ import socket
 import threading
 import time
 
-import networkHelper.NetworkStatus as status
+import networkHelper.protocol as prtcl
 import networkHelper.systemInfo as sysinfo
 
 class sThreadPool():
     def __init__(self, port, size):
         self.port = port
         self.size = size
-        self.workers = {};
+        self.id = time.time()
+        self.workersip = {}
+        self.workers = {}
 
     class MultiServerThread(threading.Thread):
         def __init__(self, pool, workers, scs, addr, id=None, name=None):
@@ -21,16 +23,19 @@ class sThreadPool():
             if id == None:
                 self.id = time.time()
             if name == None:
-                self.name = time.ctime(time.time())
-            workers[self.id] = self
+                self.name = 'con:'+addr
             self.pool = pool
             self.scs = scs
             self.addr = addr
             self.counter = 0
+            workers[self.id] = self
+            self.pool.workersip[self.addr] = self
 
         def __del__(self):
             if self.id in self.pool.workers:
                 del self.pool.workers[self.id]
+            if self.addr in self.pool.workersip:
+                del self.pool.workersip[self.addr]
             self.scs.close()
 
         def run(self):
@@ -46,16 +51,17 @@ class sThreadPool():
                 scs, addr= self.sServer.accept()
                 if not len(self.workers) > int(self.size):
                     newThread = sThreadPool.MultiServerThread(self, self.workers, scs, addr)
-                    scs.send(status.ConnectionSuccess)
+                    scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.ConnectionSuccess}))
                     newThread.start()
                 else:
-                    scs.send(status.FullPoolRejection)
+                    # TODO: transmission context
+                    scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.FullPullRejection}))
                     scs.close()
         finally:
             self.close()
 
     def close(self):
-        self.sServer.send(status.ReactorClosed)
+        self.sServer.send(prtcl.preTran({prtcl.StatusCode:prtcl.ReactorClosed}))
         self.sServer.close()
 
     #the function you need to override

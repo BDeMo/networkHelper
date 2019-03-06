@@ -1,5 +1,11 @@
+#created by SamJ
+#github:github.com/BDeMo
+#2019-3-6- 12:19:50
+
 import socket
 import sys
+
+import networkHelper.systemInfo as sysinfo
 
 #example
 def doInput(scc):
@@ -14,14 +20,16 @@ def doInput(scc):
 
 # if __name__ == '__main__':
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        pass
-    else:
-        print('arg1: addr, arg2: port')
-        exit(1);
-        try:
-            scc = socket.socket()
-            scc.connect((sys.argv[1], int(sys.argv[2])))
-            print(scc.recv(1024))
-        finally:
-            scc.close()
+    ip = sysinfo.host_ipv4()
+    port = 55667
+    sysinfo.getOption()
+    if sysinfo.ip != None:
+        ip = sysinfo.ip
+    if sysinfo.port != None:
+        port = sysinfo.port
+    try:
+        scc = socket.socket()
+        scc.connect((ip, port))
+        print(scc.recv(1024))
+    finally:
+        scc.close()
