@@ -4,8 +4,50 @@
 
 import socket
 import sys
+import threading
+import time
 
 import networkHelper.systemInfo as sysinfo
+
+class sThreadPool():
+    def __init__(self, pool, workers, scs, addr, id=None, name=None):
+        threading.Thread.__init__(self)
+        if id == None:
+            self.id = time.time()
+        if name == None:
+            self.name = 'conTo:: ' + str(addr)
+        self.pool = pool
+        self.scs = scs
+        self.addr = addr
+        self.counter = 0
+        workers[self.id] = self
+        self.pool.workersip[self.addr] = self
+        self.eOn = False
+
+    class sThread(threading.Thread):
+        def __init__(self, pool):
+            self.pool = pool
+
+        def __del__(self):
+            if self.id in self.pool.workers:
+                del self.pool.workers[self.id]
+            if self.addr in self.pool.workersip:
+                del self.pool.workersip[self.addr]
+            self.scs.close()
+
+        def run(self):
+            while True:
+                if self.pool.eOn:
+                    self.pool.eOn = False
+                    self.pool.do()
+
+    def onEvent(self):
+        eOn = True
+
+    def do(self):
+        pass
+
+
 
 #example
 def doInput(scc):

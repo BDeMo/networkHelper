@@ -17,7 +17,7 @@ class sThreadPool():
         self.workersip = {}
         self.workers = {}
 
-    class MultiServerThread(threading.Thread):
+    class sThread(threading.Thread):
         def __init__(self, pool, workers, scs, addr, id=None, name=None):
             threading.Thread.__init__(self)
             if id == None:
@@ -50,7 +50,7 @@ class sThreadPool():
             while True:
                 scs, addr= self.sServer.accept()
                 if len(self.workers) < int(self.size):
-                    newThread = sThreadPool.MultiServerThread(self, self.workers, scs, addr)
+                    newThread = sThreadPool.sThread(self, self.workers, scs, addr)
                     scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.ConnectionSuccess}))
                     newThread.start()
                 else:
