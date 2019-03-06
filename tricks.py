@@ -12,4 +12,5 @@ def get_host_ip():
         s.close()
     return ip
 
-# print(get_host_ip())
+if __name__ == '__main__':
+    print(get_host_ip())

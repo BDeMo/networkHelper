@@ -8,6 +8,7 @@ address_IPv4 = None
 OSinfo = None
 port = None
 ip = None
+size = None
 
 def host_ipv4(self):
     if self.address_IPv4 == None:

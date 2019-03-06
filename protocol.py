@@ -8,19 +8,20 @@ encoding = 'utf-8'
 
 #Type
 
-StatusCode = b'1001\n'
+StatusCode = '1001\n'
 
 #Status
 
-ConnectionSuccess = b'0000\n'
-FullPullRejection = b'0001\n'
-ReactorClosed = b'0002\n'
+ConnectionSuccess = '0000\n'
+FullPullRejection = '0001\n'
+ReactorClosed = '0002\n'
 
 #function
 
 def preTran(message):
     msg = None
     if isinstance(message, (str, dict)):
+
         msg = bytes(json.dumps(message), encoding=encoding)
     return msg
 

@@ -23,7 +23,7 @@ class sThreadPool():
             if id == None:
                 self.id = time.time()
             if name == None:
-                self.name = 'con:'+addr
+                self.name = 'conTo:: '+str(addr)
             self.pool = pool
             self.scs = scs
             self.addr = addr
@@ -45,16 +45,15 @@ class sThreadPool():
     def start(self):
         try:
             self.sServer = socket.socket()
-            self.sServer.bind((sysinfo.host_ipv4(), self.port))
+            self.sServer.bind((sysinfo.host_ipv4(sysinfo), self.port))
             self.sServer.listen(self.size)
             while True:
                 scs, addr= self.sServer.accept()
-                if not len(self.workers) > int(self.size):
+                if len(self.workers) < int(self.size):
                     newThread = sThreadPool.MultiServerThread(self, self.workers, scs, addr)
                     scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.ConnectionSuccess}))
                     newThread.start()
                 else:
-                    # TODO: transmission context
                     scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.FullPullRejection}))
                     scs.close()
         finally:
@@ -84,8 +83,8 @@ class myThreadPool(sThreadPool):
 #implement __main__
 if __name__ == '__main__':
     port = 55667
-    size = 10
-    sysinfo.getOption();
+    size = 0
+    sysinfo.getOption(sysinfo);
     if sysinfo.port != None:
         port = sysinfo.port
     if sysinfo.size != None:
