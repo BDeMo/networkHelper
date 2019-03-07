@@ -9,6 +9,7 @@ OSinfo = None
 port = None
 ip = None
 size = None
+interval = None
 
 def host_ipv4(self):
     if self.address_IPv4 == None:
@@ -25,7 +26,7 @@ def usage():
 
 def getOption(self):
     try:
-        options, args = getopt.getopt(sys.argv[1:], "hp:i:s:", ["help", "ip=", "port=","size="])
+        options, args = getopt.getopt(sys.argv[1:], "hp:i:s:I:", ["help", "ip=", "port=","size=","interval="])
     except getopt.GetoptError:
         sys.exit()
     for name, value in options:
@@ -37,3 +38,5 @@ def getOption(self):
             self.port = value
         if name in ("-s", "--size"):
             self.size = value
+        if name in ("-I", "--interval"):
+            self.interval = value

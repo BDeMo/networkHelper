@@ -11,14 +11,26 @@ import networkHelper.systemInfo as sysinfo
 
 class sThreadPool():
     def __init__(self, port, size):
-        self.port = port
-        self.size = size
+        if isinstance(port, (str, float)):
+            self.port = int(port)
+        elif isinstance(port, int):
+            self.port = port
+        else:
+            raise Exception('Error port')
+        if isinstance(size, (str, float)):
+            self.size = int(size)
+        elif isinstance(size, int):
+            self.size = size
+        else:
+            raise Exception('Error size')
         self.id = time.time()
         self.workersip = {}
         self.workers = {}
+        self.counter = 0
+        self.onrej = False
 
     class sThread(threading.Thread):
-        def __init__(self, pool, workers, scs, addr, id=None, name=None):
+        def __init__(self, pool, scs, addr, id=None, name=None):
             threading.Thread.__init__(self)
             if id == None:
                 self.id = time.time()
@@ -27,8 +39,7 @@ class sThreadPool():
             self.pool = pool
             self.scs = scs
             self.addr = addr
-            self.counter = 0
-            workers[self.id] = self
+            self.pool.workers[self.id] = self
             self.pool.workersip[self.addr] = self
 
         def __del__(self):
@@ -37,6 +48,9 @@ class sThreadPool():
             if self.addr in self.pool.workersip:
                 del self.pool.workersip[self.addr]
             self.scs.close()
+
+        def stop(self):
+            self.__del__()
 
         def run(self):
             self.pool.do(self.scs)
@@ -48,23 +62,35 @@ class sThreadPool():
             self.sServer.bind((sysinfo.host_ipv4(sysinfo), self.port))
             self.sServer.listen(self.size)
             while True:
-                scs, addr= self.sServer.accept()
                 if len(self.workers) < int(self.size):
-                    newThread = sThreadPool.sThread(self, self.workers, scs, addr)
+                    scs, addr= self.sServer.accept()
+                    newThread = sThreadPool.sThread(self, scs, addr)
                     scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.ConnectionSuccess}))
                     newThread.start()
-                else:
+                elif self.onrej:
                     scs.send(prtcl.preTran({prtcl.StatusCode:prtcl.FullPullRejection}))
                     scs.close()
         finally:
+            print('threadpool closing')
             self.close()
 
     def close(self):
         self.sServer.send(prtcl.preTran({prtcl.StatusCode:prtcl.ReactorClosed}))
+        for id in self.workers:
+            self.workers[id].stop()
         self.sServer.close()
 
+    def onReject(self):
+        self.onrej = True
+
+    def offReject(self):
+        self.onrej = False
+
     #the function you need to override
-    def do(self, socket):
+    def do(self, socket, *args, **kwargs):
+        pass
+
+    def dispatch(self):
         pass
 
 #implement example
@@ -77,13 +103,17 @@ class myThreadPool(sThreadPool):
         try:
             socket.send(bytes('connected :'+time.ctime(time.time()), encoding='utf-8'))
             print(self.workers)
+            print(str(socket.recv(1024), encoding='utf-8'))
+        except ConnectionAbortedError:
+            print('connection closed while running', threading.current_thread().addr)
         finally:
-            socket.close()
+            if socket is not None:
+                socket.close()
 
 #implement __main__
 if __name__ == '__main__':
     port = 55667
-    size = 0
+    size = 10
     sysinfo.getOption(sysinfo);
     if sysinfo.port != None:
         port = sysinfo.port

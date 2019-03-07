@@ -7,22 +7,44 @@ import sys
 import threading
 import time
 
+import networkHelper.tricks as tricks
 import networkHelper.systemInfo as sysinfo
 
 class sThreadPool():
 
-    def __init__(self, ip, port, size):
+    def __init__(self, ip, port, size, interval=1):
         self.ip = ip
-        self.port = port
-        self.size = size
+        if isinstance(port, (str, float)):
+            self.port = int(port)
+        elif isinstance(port, int):
+            self.port = port
+        else:
+            raise Exception('Error port')
+        if isinstance(size, (str, float)):
+            self.size = int(size)
+        elif isinstance(size, int):
+            self.size = size
+        else:
+            raise Exception('Error size')
+        if isinstance(interval, (str, float)):
+            self.interval = int(interval)
+        elif isinstance(interval, int):
+            self.interval = interval
+        else:
+            raise Exception('Error interval')
         self.id = time.time()
         self.workers = {}
-        self.eOn = False
         self.started = False
         self.fstop = False
+        self.lock_counterEvent = threading.Lock()
+        self.lock_counter = threading.Lock()
+        self.counterEvent = 0
+        self.counter = self.size
+        # global counterEvent = 0
+        # global counter = self.size
 
     class sThread(threading.Thread):
-        def __init__(self, pool, workers, scs, addr, port, lock, id=None, name=None):
+        def __init__(self, pool, scs, addr, port, id=None, name=None):
             threading.Thread.__init__(self)
             if id == None:
                 self.id = time.time()
@@ -32,46 +54,43 @@ class sThreadPool():
             self.scs = scs
             self.addr = addr
             self.port = port
-            self.lock = lock
-            self.counter = 0
-            workers[self.id] = self
-            self.pool.workersip[self.addr] = self
+            self.pool.workers[self.id] = self
 
         def __del__(self):
             if self.id in self.pool.workers:
                 del self.pool.workers[self.id]
-            self.scs.close()
+                self.scs.close()
 
         def stop(self):
             self.__del__()
 
         def run(self):
-            while True:
-                if self.pool.eOn:
-                    self.lock.acquire()
-                    self.pool.eOn = False
-                    self.lock.release()
-                    self.pool.do(self.scs, self.id)
-
+            self.pool.counterEvent-=1
+            tricks.mutex_p(self.pool.counterEvent, self.pool.lock_counterEvent)
+            self.pool.do(self.scs, self.id)
+            self.pool.counter+=1
+            tricks.mutex_v(self.pool.counter, self.pool.lock_counter)
+            time.sleep(self.pool.interval)
+    # A bug in onEvent Function and sThread.run function about lock
     def start(self):
         try:
             if not self.started:
-                self.lock = threading.Lock()
                 for i in range(self.size):
                     scs = socket.socket()
-                    scs.connect(self.ip, self.port)
-                    newThread = sThreadPool.sThread(self, self.workers, scs, self.ip, self.port, self.lock)
+                    scs.connect((self.ip, self.port))
+                    newThread = sThreadPool.sThread(self, scs, self.ip, self.port)
                     newThread.start()
-                while len(self.workers) <= 0 and not self.fstop:
-                    pass
-        finally:
-            for wkr in self.workers:
-                wkr.stop()
+            time.sleep(interval)
+            while len(self.workers) <= 0 and not self.fstop:
+                pass
+        except ConnectionRefusedError:
+            raise  ConnectionRefusedError("refused by host"+self.ip)
 
     def onEvent(self):
-        self.lock.acquire()
-        self.eOn = True
-        self.lock.release()
+        self.counter-=1
+        tricks.mutex_p(self.counter, self.lock_counter)
+        self.counterEvent+=1
+        tricks.mutex_v(self.counterEvent, self.lock_counterEvent)
 
     def stopAll(self):
         if self.started:
@@ -96,29 +115,36 @@ def doInput(scc):
 
 #implement example
 class myThreadPool(sThreadPool):
-    def __init__(self, ip, port, size):
-        sThreadPool.__init__(self, ip, port, size)
+    def __init__(self, ip, port, size, interval):
+        sThreadPool.__init__(self, ip, port, size, interval)
 
     def do(self, socket, *args):
         print(socket.recv(1024))
-        if args[0] in self.workers:
-            self.workers[args[0]].stop()
+        socket.send(bytes('res ' + time.ctime(time.time()),encoding='utf-8'))
+        # if args[0] in self.workers:
+        #     self.workers[args[0]].stop()
 
 #implement __main__
 if __name__ == '__main__':
+    tp = None
+    interval = 0.5
+    port = 55667
+    size = 10
     try:
-        ip = sysinfo.host_ipv4()
-        port = 55667
-        size = 10
-        sysinfo.getOption()
+        ip = sysinfo.host_ipv4(sysinfo)
+        sysinfo.getOption(sysinfo)
         if sysinfo.ip != None:
             ip = sysinfo.ip
         if sysinfo.port != None:
             port = sysinfo.port
-        if sysinfo.port != None:
-            size = sysinfo.size
-        tp = myThreadPool(ip, port, size)
+        if sysinfo.size != None:
+            size = int(sysinfo.size)
+        if sysinfo.interval != None:
+            interval = int(sysinfo.interval)
+        tp = myThreadPool(ip, port, size, interval=interval)
+        tp.start()
         for i in range(size):
             tp.onEvent()
     finally:
-        tp.stopAll()
+        if tp is not None:
+            tp.stopAll()
